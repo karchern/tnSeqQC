@@ -1,0 +1,4 @@
+data
+scripts/work
+scripts/.nextflow/
+scripts/.nextflow*
