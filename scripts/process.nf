@@ -1,52 +1,28 @@
-/*
- * pipeline input parameters
- */
+params.baseDir = "/home/nicolai/tnSeqQC/scripts/"
 params.repeatSeq = "TACGAAGACCGGGGACTTATCATCCAACCTGT"
 params.barcodeReplacementSeq = "TGTATGAGACGTCAGAATTGGTTAATTCGTCTCT"
+params.spacerSeq = "CAGAATTGGGAGTCTACGAAGACCGGGGACTTATCATCCAACCTGT"
+params.identifier = "ACTG"
 params.genomePath = "/home/nicolai/for_carlos_3/seq/GCF_000154205.1_ASM15420v1_genomic_ATCC_8492.fna"
-params.speciesAndStrainName = "BacteroidesUnformisXXX"
 params.reads = "/home/nicolai/for_carlos_3/seq/seq/*/*_1_sequence.fastq"
+// For testing
+//params.reads = "/home/nicolai/for_carlos_3/seq/seq2/*/*_1_sequence.fastq"
 params.readTrim5 = 110
 params.pathToIndex = "/home/nicolai/for_carlos_3/seq/atcc_8492_concatenated"
-params.publishDir = "/home/nicolai"
+params.publishDir = "/home/nicolai/testNF"
 
 Channel.fromPath(params.reads).map{ str ->
   def sampleID = str.name.replaceAll("_1_sequence.fastq", "")
   return tuple(sampleID, str)
-}.into{read_pairs_ch; read_pairs_ch2; read_pairs_ch3; read_pairs_ch4; read_pairs_ch5}
+}.into{read_pairs_ch; read_pairs_ch2; read_pairs_ch3; read_pairs_ch4; read_pairs_ch5; read_pairs_ch6}
 genomePath = Channel.value(params.genomePath)
-genomeName = Channel.value(params.speciesAndStrainName)
 trim5 = Channel.value(params.readTrim5)
 rs = Channel.value(params.repeatSeq)
 brs = Channel.value(params.barcodeReplacementSeq)
 i = Channel.value(params.pathToIndex)
-
-process concatenate_genome {
-    input:
-    file genomePath from genomePath
-    file genomeName from genomeName
-
-    output:
-    file "genome_concatenated" into genomePathConcatenated
-
-    """
-    cat $genomePath | grep -v "^>" > tmp; echo ">$genomeName" >> genome_concatenated; cat tmp >> genome_concatenated
-    """
-}
-
-/*
-process index_genome {
-   input:
-   file genomeFile from genomePathConcatenated
-
-   output:
-   path "testIndexName*" into genomeIndexName
-
-   """
-   bowtie2-build $genomeFile testIndexName && touch testIndexName
-   """
-}
-*/
+spacerSeq = Channel.value(params.spacerSeq)
+identifier = Channel.value(params.identifier)
+baseDir = Channel.value(params.baseDir)
 
 process map_reads {
 
@@ -71,6 +47,7 @@ process sort_bam {
    output:
    tuple val(s), file(bamFileSorted) into bamFileSorted
    tuple val(s), file(bamFileSorted) into bamFileSorted2
+   tuple val(s), file(bamFileSorted) into bamFileSorted3
 
    """
    samtools sort ${b} > bamFileSorted
@@ -79,6 +56,21 @@ process sort_bam {
 }
 
 bamFileSorted = bamFileSorted.join(read_pairs_ch2)
+bamFileSorted3 = bamFileSorted3.join(read_pairs_ch6)
+
+process get_depth_at_pos {
+
+
+  input:
+  tuple val(s), file(bamFileSorted), file(sampleID) from bamFileSorted3
+
+  output:
+  file "*_depthAtPos" into depthAtPos
+
+  """
+  samtools depth -d 0 ${bamFileSorted} | sed "s/\t//" | sed "s/^/${s}\t/" > ${sampleID}_depthAtPos
+  """
+}
 
 process get_read_info {
 
@@ -102,7 +94,7 @@ process get_depth_info {
   input:
   tuple val(s), file(bamFileSorted), path(sampleID) from bamFileSorted2
 
-  publishDir '/home/nicolai/testNF'
+  publishDir params.publishDir
 
   output:
   tuple val(s), file("*_depth") into de
@@ -128,9 +120,6 @@ process reads_to_fasta {
   """
 
 }
-
-// TODO: Figure out how to modify channels. Specifically, understand how to turn a list of strings
-// into a list of two element tuples, where the first element is an ID that can be used to join channels.
 
 /*
 ri = ri.map{ str ->
@@ -179,19 +168,22 @@ process parse_read_stats {
   input:
   val rs from rs
   val brs from brs
+  val spacerSeq from spacerSeq
+  val identifier from identifier
   //path sampleID from read_pairs_ch5
   // Get rid of this channel; get fasta from fastq.
   //path fastaFile from fastaReads
   //path readInfo from ri
   tuple val(s), path(sampleID), path(fastaFile), path(readInfo) from all
-
-  publishDir '/home/nicolai/testNF'
+  val baseDir from baseDir
 
   output:
   file "*_readInfoParsed" into readInfoParsed
+  file "*_readInfoParsed2" into readInfoParsed2
 
   """
-  python /home/nicolai/for_carlos_3/seq/analyse_barcode_distribution_2021_03_13.py ${fastaFile} ${readInfo} ${sampleID}_readInfoParsed ${rs} ${brs}
+  python ${baseDir}analyse_barcode_distribution_2021_03_13.py ${fastaFile} ${readInfo} ${sampleID}_readInfoParsed ${rs} ${brs}
+  python ${baseDir}analyse_barcode_distribution.py ${spacerSeq} ${identifier} ${fastaFile} ${sampleID}_readInfoParsed2 ${readInfo}
   """
 }
 
@@ -217,34 +209,30 @@ input:
 set sample, file(bamfile) from samples_ch
 */
 
-//process collect_parsed_read_stats {
-// input:
-//  file r from readInfoParsed
-//  publishDir '/home/nicolai/testNF'
-//  output:
-//  file o into readInfoParsedConcat
-//  """
-//  cat ${r} >> o
-//  """
-//}
-
 readInfoParsedConcat = readInfoParsed.collectFile(name: 'o')
+readInfoParsedConcat2 = readInfoParsed2.collectFile(name: 'o2')
+depthAtPosConcat = depthAtPos.collectFile(name: "depthAtPos")
 
-// We've combined everything into o above, so make sure channel has only one 'member'.
 readInfoParsedConcat = readInfoParsedConcat.last()
+readInfoParsedConcat2 = readInfoParsedConcat2.last()
+depthAtPosConcat = depthAtPosConcat.last()
 
 process get_barcode_distrib_plots {
 
  input:
  file r from readInfoParsedConcat
+ file r2 from readInfoParsedConcat2
+ file depthAtPos from depthAtPosConcat
+ val baseDir from baseDir
 
- publishDir '/home/nicolai/testNF'
+ publishDir params.publishDir
 
  output:
  file "barcode_distrib_plots.png" into devNull
+ file "testPlot*" into devNull2
 
  """
- Rscript /home/nicolai/for_carlos_3/seq/analyse_read_situation_final.r ${r} barcode_distrib_plots.png
+ Rscript ${baseDir}analyse_read_situation_final.r ${r} ${r2} depthAtPos barcode_distrib_plots.png testPlot
  """
 
 }
