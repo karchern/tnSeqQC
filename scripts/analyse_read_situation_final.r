@@ -44,7 +44,7 @@ data <- read_tsv(argv[3], col_names = F)
 colnames(data) <- c("sampleID", "position", "depth")
 #data <- data %>% group_by(sampleID) %>% arrange(positions)
 
-print(head(data))
+#print(head(data))
 data2 <- data %>% filter(depth != 0) %>% group_by(sampleID) %>% nest() %>% mutate(hists = map(data, function(x){
   p <- ggplot(x %>% arrange(position), aes(x = position, y = depth, group = 1)) + geom_line()
   #p <- p + theme_embl()
@@ -87,11 +87,11 @@ data3 <- data %>% mutate(rollingWindowBarcodeData = map(data, function(x){
 barcodeInfo <- data3 %>% select(sampleID, rollingWindowBarcodeData) %>% unnest()
 barcodeInfo <- barcodeInfo %>% group_by(sampleID) %>% nest()
 barcodeInfo$sampleID <- map_chr(barcodeInfo$sampleID, function(x) str_split(string = x, pattern = "_1_sequence")[[1]][1])
-print(head(data2$sampleID))
-print(head(barcodeInfo$sampleID))
+#print(head(data2$sampleID))
+#print(head(barcodeInfo$sampleID))
 #saddss
 data2 <- left_join(data2, barcodeInfo, by = 'sampleID')
-print(head(data2))
+#print(head(data2))
 data2 <- data2 %>% mutate(barcodeBarplots = map(data.y, function(x){
   if (is.null(x)){
     return(NULL)
@@ -152,7 +152,9 @@ tmp$sampleID <- factor(as.vector(tmp$sampleID), levels = l)
 p3 <- ggplot(tmp, aes(x = sampleID, y = numReadsFrac, color = modeBarCode)) + geom_point()
 p3 <- p3 + theme(axis.text.x = element_blank(),
                  axis.title.x = element_blank())
+p3 <- p3 + scale_color_discrete(drop=FALSE) + scale_x_discrete(drop=F)
 p2 <- p2 + theme(axis.title.x = element_blank())
 pfin <- p3/p2/p
+#pfin <- p3
 # 
 ggsave(filename = argv[4], plot = pfin, width = 16, height = 9, dpi = 300)

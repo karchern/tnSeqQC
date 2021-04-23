@@ -4,9 +4,9 @@ params.barcodeReplacementSeq = "TGTATGAGACGTCAGAATTGGTTAATTCGTCTCT"
 params.spacerSeq = "CAGAATTGGGAGTCTACGAAGACCGGGGACTTATCATCCAACCTGT"
 params.identifier = "ACTG"
 params.genomePath = "/home/nicolai/for_carlos_3/seq/GCF_000154205.1_ASM15420v1_genomic_ATCC_8492.fna"
-params.reads = "/home/nicolai/for_carlos_4/reads/*.fastq"
+//params.reads = "/home/nicolai/for_carlos_4/reads/*.fastq"
 // For testing
-//params.reads = "/home/nicolai/for_carlos_3/seq/seq2/*/*_1_sequence.fastq"
+params.reads = "/home/nicolai/for_carlos_3/seq/seq/*/*_1_sequence.fastq"
 params.readTrim5 = 110
 params.pathToIndex = "/home/nicolai/for_carlos_3/seq/atcc_8492_concatenated"
 params.publishDir = "/home/nicolai/testNF"

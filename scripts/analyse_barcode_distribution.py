@@ -30,7 +30,7 @@ with open(pathToParsedReadFile, "w") as f:
             if readStr[(spacerStartIndex-26-3) : (spacerStartIndex-25)] == BuniformisIdentifer:
                 BarcodeSequence = readStr[(spacerStartIndex-25) : spacerStartIndex]
                 #readsWithBarcodes.append([sampleID, read.id, readStr, readInfo[read.id], BarcodeSequence])
-                f.write("{}\t{}\t{}\t{}\t{}\n".format(sampleID, read.id, readStr, readInfp[read.id], BarcodeSequence)
+                f.write("{}\t{}\t{}\t{}\t{}\n".format(sampleID, read.id, readStr, readInfo[read.id], BarcodeSequence))
 
           
         
